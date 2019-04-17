@@ -49,7 +49,19 @@ while True:
     cnts = cv2.findContours(thresh3000, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     #KONIEC ODSZUMIACZA 3000
-
+    '''
+    #BLOBER DETECTOR 4000
+    detector = cv2.SimpleBlobDetector()
+ 
+    # Detect blobs.
+    keypoints = detector.detect(img3000)
+ 
+    # Draw detected blobs as red circles.
+    # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
+    im_with_keypoints = cv2.drawKeypoints(img3000, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    imshow(im_with_keypoints)
+    #KONIEC BLOBERA DETECORA 4000
+    '''
     '''
     kernel_square = np.ones((9,9),np.uint8)
     kernel_ellipse= cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(4,4))
@@ -73,64 +85,69 @@ while True:
     #mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
     #szukanie kontur
-    # thresh = cv2.dilate(mask, None, iterations=2)
+    thresh = cv2.dilate(mask, None, iterations=2)
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
-
+    '''
+    '''
     # BLOBS
     # Set up the detector with default parameters.
-    # detector = cv2.SimpleBlobDetector()
-    # detector = cv2.SimpleBlobDetector_create()
+    detector = cv2.SimpleBlobDetector()
+    detector = cv2.SimpleBlobDetector_create()
     # Detect blobs.
-    # gray = cv2.cvtColor(thresh, cv2.COLOR_BGR2GRAY)
-    
-    # gray = cv2.cvtColor(thresh, cv2.COLOR_RGB2GRAY)
-    # keypoints = detector.detect(thresh)
+    keypoints = detector.detect(thresh3000)
     # Draw detected blobs as red circles.
     # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
-    # im_with_keypoints = cv2.drawKeypoints(mask, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
+    im_with_keypoints = cv2.drawKeypoints(thresh3000, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    '''  
     # Setup SimpleBlobDetector parameters.
-    # params = cv2.SimpleBlobDetector_Params()
+    params = cv2.SimpleBlobDetector_Params()
  
     # # Change thresholds
-    # params.minThreshold = 10
-    # params.maxThreshold = 200
+    params.minThreshold = 10
+    params.maxThreshold = 255
     
     # # Filter by Area.
-    # params.filterByArea = True
-    # params.minArea = 10
+    params.filterByArea = True
+    params.minArea = 54
+    params.maxArea = 20000
     
     # # Filter by Circularity
-    # params.filterByCircularity = True
-    # params.minCircularity = 0.1
+    params.filterByCircularity = False
+    params.minCircularity = 0.1
     
     # # Filter by Convexity
-    # params.filterByConvexity = True
-    # params.minConvexity = 0.87
-    
+    params.filterByConvexity = True
+    params.minConvexity = 0.15 #0.87
+    params.maxConvexity = 1
+
     # # Filter by Inertia
-    # params.filterByInertia = True
-    # params.minInertiaRatio = 0.01
+    params.filterByInertia = True
+    params.minInertiaRatio = 0.01
+
+    params.filterByColor = 1
+    params.blobColor = 255
     
     # # Create a detector with the parameters
     # # ver = (cv2.__version__).split('.')
     # # if int(ver[0]) < 3 :
     # #     detector = cv2.SimpleBlobDetector(params)
     # # else : 
-    # detector = cv2.SimpleBlobDetector_create(params)
-
-    # keypoints = detector.detect(thresh)
+    detector = cv2.SimpleBlobDetector_create(params)
+    
+    keypoints = detector.detect(thresh3000)
     # # Draw detected blobs as red circles.
     # # cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS ensures the size of the circle corresponds to the size of blob
-    # im_with_keypoints = cv2.drawKeypoints(thresh, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    '''
+    im_with_keypoints = cv2.drawKeypoints(thresh3000, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    
+    cv2.imshow("im_with_keypoints", im_with_keypoints)
 
+    index = 0
 
     for c in cnts:
     # if the contour is too small, ignore it
         carea = cv2.contourArea(c)
-
+        
 		# compute the bounding box for the contour, draw it on the frame
         (x, y, w, h) = cv2.boundingRect(c)
 
@@ -148,6 +165,8 @@ while True:
             continue
 
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        cv2.putText(frame, str(index), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)        
+        index=index+1
         print(x, y)
 
     #cv2.imshow("Blobs", thresh)
