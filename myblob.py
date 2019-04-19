@@ -1,35 +1,47 @@
 import math
 
+class Point:
+    x = 0
+    y = 0
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    @staticmethod
+    def calculateDistance(p1, p2):
+        print("distance ", math.sqrt( ((p1.x - p2.x )**2) + ((p1.y - p2.y)**2 ) ))
+        return math.sqrt( ((p1.x - p2.x )**2) + ((p1.y - p2.y)**2 ) )
+    
 class Blob:
-    nearDistance = 60;
+    nearDistance = 70
     founded = True
-    xHistory = []
-    yHistory = []
+    points = []
+    vectors = []
 
     def __init__(self, x, y):
-        self.xHistory.append(x)
-        self.yHistory.append(y)
+        self.vectors.append(Point(0, 0))
+        self.points.append(Point(x, y))
 
     def newPosition(self, x, y):
-        self.xHistory.append(x)
-        self.yHistory.append(y)
+        lastPoint = self.getLastPoint()
+        self.vectors.append(Point(x - lastPoint.x, y - lastPoint.y))
+        self.points.append(Point(x, y))
 
-    def sredniaX(self):
-        return sum(self.xHistory) / len(self.xHistory)
-    
-    def sredniaY(self):
-        return sum(self.yHistory) / len(self.yHistory)
+    def getLastPoint(self):
+        return self.points[-1]
 
-    def distance(self, x1, y1, x2, y2):
-        #print("deltaX = ", x1 - x2)
-        #print("deltaY = ", y1 - y2)
-        dis = math.sqrt( ((x1 - x2)**2) + ((y1 - y2)**2) )
-        #print("Distance = ", dis)
-        return dis
-
-    def isNear(self, xK, yK):
-        distancePoints = self.distance(self.xHistory[-1], self.yHistory[-1], xK, yK)
-        if distancePoints < self.nearDistance:
+    def isNearToLast(self, p):
+        print("to near ", Point.calculateDistance(p, self.getLastPoint()))
+        if Point.calculateDistance(p, self.getLastPoint()) < Blob.nearDistance:
             return True
         else:
             return False
+
+    @staticmethod
+    def isNear(p1, p2):
+        print("XDDD  ",p1.x)
+        if Point.calculateDistance(p1, p2) < Blob.nearDistance:
+            return True
+        else:
+            return False
+

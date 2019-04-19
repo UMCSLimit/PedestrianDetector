@@ -6,55 +6,28 @@ import time
 import cv2
 import numpy as np
 
-import myblob
-
-#Webcam stream
-#cap = cv2.VideoCapture(0)
-
-#Prepered videos: 1, 2, 3.mp4 
-cap = cv2.VideoCapture("2.mov")
+from myblob import Point, Blob
 
 
-time.sleep(0.5)
-subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=12, detectShadows=False)
 
-myBlobs = []
-
-while True:
-    #Read frame
-    _ ,frame = cap.read()
-    #sprawdzanie roznicy pomiedzy poprzednimi klatkami
-    # kernel = np.ones((3,3),np.float32)/25
-    # frame = cv2.filter2D(mask,-1,kernel)
-    mask = subtractor.apply(frame)
-
-    # mask = cv2.dilate(mask, None, iterations=2)
-    # kernel = np.ones((3,3),np.float32)/25
-    # mask = cv2.filter2D(mask,-1,kernel)
-
-    #ODSZUMIACZ 3000
+def remove_noise(mask):
     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     sizes = stats[1:, -1]; nb_components = nb_components - 1
-
-    # minimum size of particles we want to keep (number of pixels)
-    #here, it's a fixed value, but you can set it as you want, eg the mean of the sizes or whatever
     min_size = 50
-
-    #your answer image
-    img3000 = np.zeros((output.shape), np.uint8)
+    img = np.zeros((output.shape), np.uint8)
     #for every component in the image, you keep it only if it's above min_size
     for i in range(0, nb_components):
         if sizes[i] >= min_size:
-            img3000[output == i + 1] = 255
+            img[output == i + 1] = 255
+    return img
 
-    kernel_ellipse= cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(10,10))
-    dilation = cv2.dilate(img3000,kernel_ellipse,iterations = 1)
-
+def dilate_image(img):
+    kernel_ellipse= cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(8,8))
+    dilation = cv2.dilate(img,kernel_ellipse,iterations = 1)
     (ret, thresh3000) = cv2.threshold(dilation,127,255,0)
-    #KONIEC ODSZUMIACZA 3000
+    return thresh3000
 
-    ### BLOB DETECTOR 3000 ###
-    # Setup SimpleBlobDetector parameters.
+def params_for_blobs():
     params = cv2.SimpleBlobDetector_Params()
     # # Change thresholds
     params.minThreshold = 10
@@ -76,118 +49,89 @@ while True:
     # # Filter by Color
     params.filterByColor = 1
     params.blobColor = 255
-    
-    detector = cv2.SimpleBlobDetector_create(params)
-    keypoints = detector.detect(thresh3000)
-    # Draw detected blobs as red circles.
-    im_with_keypoints = cv2.drawKeypoints(thresh3000, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    # # # KONIEC BLOB DETECTOR 3000 # # #
+    return params
 
-    #remoove not founded blobs 
-    for blob in myBlobs:
-        if not blob.founded:
-            myBlobs.remove(blob)
+def start_stream():
+    #Webcam stream
+    #cap = cv2.VideoCapture(0)
+    #Prepered videos: 1, 2, 3.mp4 
+    cap = cv2.VideoCapture("1.mp4")
+    time.sleep(0.5)
+    subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=12, detectShadows=False)
+    myBlobs = []
 
-    # # # BLOB ANALAJZER 9000 # # #
-    print("nr of keys = ", len(keypoints))
-    print("nr of blobs = ", len(myBlobs))
+    while True:
+        #Read frame
+        _ ,frame = cap.read()
+        mask = subtractor.apply(frame)
 
-    index = 0
-    for k in keypoints:
-        xK, yK = k.pt
-        #print("Point x ",xK, " y ",yK)
+        img3000 = remove_noise(mask)
+        thresh3000 = dilate_image(img3000)
+        params = params_for_blobs()
+        detector = cv2.SimpleBlobDetector_create(params)
+        keypoints = detector.detect(thresh3000)
+        im_with_keypoints = cv2.drawKeypoints(thresh3000, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
-        anyBlobFounded = False
-        index = index + 1
+        #remoove not founded blobs 
         for blob in myBlobs:
-            #print("blob history = ", blob.xHistory)
-            
+            if not blob.founded:
+                myBlobs.remove(blob)
 
-            #debug lines and text
-            cv2.line(frame,(int(blob.xHistory[-1]),int(blob.yHistory[-1])),(int(xK),int(yK)),(0,255,255),5)
-            cv2.putText(frame, str(int(blob.distance(blob.xHistory[-1], blob.yHistory[-1], xK, yK))), (int((blob.xHistory[-1]+xK)/2), int((blob.yHistory[-1]+yK)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
-            cv2.putText(frame, str(index), (int(xK), int(yK)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+        # # # BLOB ANALAJZER 9000 # # #
+        print("nr of keys = ", len(keypoints))
+        print("nr of blobs = ", len(myBlobs))
 
-            blob.founded = False
-            if(blob.isNear(xK, yK)):
-                blob.newPosition(xK, yK)
-                #print("update blob")
-                anyBlobFounded = True
-                blob.founded = True
-    
-        if not anyBlobFounded:
-            newBlob = myblob.Blob(xK, yK)
-            myBlobs.append(newBlob)
-            #print("add blob")  
+        index = 0
+        for k in keypoints:
+            xK, yK = k.pt
+            #print("Point x ",xK, " y ",yK)
 
-    
-    #for blob in myBlobs:
-        #print("x  ", blob.xHistory)
-        #print("y  ", blob.yHistory)
+            anyBlobFounded = False
+            index = index + 1
+            for blob in myBlobs:                
+                #debug lines and text
+                cv2.line(frame,(int(blob.points[-1].x + blob.vectors[-1].x),int(blob.points[-1].y + blob.vectors[-1].y)),(int(blob.points[-1].x),int(blob.points[-1].y)),(0,255,255),2)
 
-    #myBlobs = []
+                # cv2.putText(frame, str(int(blob.distance(blob.xHistory[-1], blob.yHistory[-1], xK, yK))), (int((blob.xHistory[-1]+xK)/2), int((blob.yHistory[-1]+yK)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+                # cv2.putText(frame, str(index), (int(xK), int(yK)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
 
-    #if any(myBlobs):
-        #print(myblob.Blob.srednia())
-
-    # # # KONIEC OF BLOB ANALAJZER 9000 # # #
-
-    # # # CONTURO-KRAJZERKA XD # # #
-    cnts = cv2.findContours(thresh3000, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
-    '''
-    index = 0
-    for c in cnts:
-    # if the contour is too small, ignore it
-        carea = cv2.contourArea(c)
+                blob.founded = False
+                #print(xK, yK)
+                if(blob.isNearToLast(Point(xK, yK))):
+                    blob.newPosition(xK, yK)
+                    anyBlobFounded = True
+                    blob.founded = True
         
-		# compute the bounding box for the contour, draw it on the frame
-        (x, y, w, h) = cv2.boundingRect(c)
+            if not anyBlobFounded:
+                myBlobs.append(Blob(xK, yK))
 
-        if x < 300:
-            if carea < 100 or carea > 15000:
-                continue
-        else:
-            if carea < 254 or carea > 20000:
-                continue
-    
-        #solidy
-        ratio = carea/(w*h)
-        if ratio < 0.45: #0.4
-            continue
 
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-        cv2.putText(frame, str(index), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 255), 2)        
-        index=index+1
+        # # # KONIEC OF BLOB ANALAJZER 9000 # # #
 
-        #print(x, y)
-        #print(ratio)
-    # # # KONIEC KONTURO-KRAJZERKI # # # 
-    '''
-    #upperline
-    #cv2.line(frame,(130,50),(1200,550),(0,255,0),1)
+        #lines
+        #cv2.line(frame,(130,50),(1200,550),(0,255,0),1)
+        #cv2.line(frame,(130,380),(1200,1400),(0,255,0),1)
 
-    #downline
-    #cv2.line(frame,(130,380),(1200,1400),(0,255,0),1)
+        # # # SHOW IMAGES # # #
+        windowSizeH = 640
+        windowSizeW = 400
+        #img3000 = cv2.resize(img3000, (windowSizeH, windowSizeW))
+        #cv2.imshow("Conected components 3000", img3000)
+        #thresh3000 = cv2.resize(thresh3000, (windowSizeH, windowSizeW))
+        # cv2.imshow("Blobs 3000", thresh3000)
+        frame = cv2.resize(frame, (windowSizeH, windowSizeW))
+        cv2.imshow("Frame", frame)
+        #mask = cv2.resize(mask, (windowSizeH, windowSizeW))
+        #cv2.imshow("mask", mask)
+        im_with_keypoints = cv2.resize(im_with_keypoints, (windowSizeH, windowSizeW))
+        cv2.imshow("im_with_keypoints", im_with_keypoints)
+        # # #  END OF SHOW IMAGES # # #
 
-    # # # SHOW IMAGES # # #
-    windowSizeH = 640
-    windowSizeW = 400
-    #img3000 = cv2.resize(img3000, (windowSizeH, windowSizeW))
-    #cv2.imshow("Conected components 3000", img3000)
-    #thresh3000 = cv2.resize(thresh3000, (windowSizeH, windowSizeW))
-    # cv2.imshow("Blobs 3000", thresh3000)
-    frame = cv2.resize(frame, (windowSizeH, windowSizeW))
-    cv2.imshow("Frame", frame)
-    #mask = cv2.resize(mask, (windowSizeH, windowSizeW))
-    #cv2.imshow("mask", mask)
-    im_with_keypoints = cv2.resize(im_with_keypoints, (windowSizeH, windowSizeW))
-    cv2.imshow("im_with_keypoints", im_with_keypoints)
-    # # #  END OF SHOW IMAGES # # #
+        if cv2.waitKey(33) == ord('a'):
+            break
 
-    if cv2.waitKey(33) == ord('a'):
-        break
+    cap.release()
+    cv2.destroyAllWindows()
 
-cap.release()
-cv2.destroyAllWindows()
-
+if __name__ == "__main__":
+    start_stream()
