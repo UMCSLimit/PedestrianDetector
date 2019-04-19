@@ -12,11 +12,13 @@ import myblob
 #cap = cv2.VideoCapture(0)
 
 #Prepered videos: 1, 2, 3.mp4 
-cap = cv2.VideoCapture("1.mp4")
+cap = cv2.VideoCapture("2.mov")
 
 
 time.sleep(0.5)
 subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=12, detectShadows=False)
+
+myBlobs = []
 
 while True:
     #Read frame
@@ -49,8 +51,6 @@ while True:
     dilation = cv2.dilate(img3000,kernel_ellipse,iterations = 1)
 
     (ret, thresh3000) = cv2.threshold(dilation,127,255,0)
-    cnts = cv2.findContours(thresh3000, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cnts = imutils.grab_contours(cnts)
     #KONIEC ODSZUMIACZA 3000
 
     ### BLOB DETECTOR 3000 ###
@@ -62,16 +62,16 @@ while True:
     # # Filter by Area.
     params.filterByArea = True
     params.minArea = 54
-    params.maxArea = 20000
+    params.maxArea = 30000
     # # Filter by Circularity
     params.filterByCircularity = False
-    params.minCircularity = 0.1
+    params.minCircularity = 0.05
     # # Filter by Convexity
     params.filterByConvexity = True
-    params.minConvexity = 0.15 #0.87
+    params.minConvexity = 0.10 #0.87
     params.maxConvexity = 1
     # # Filter by Inertia
-    params.filterByInertia = True
+    params.filterByInertia = False
     params.minInertiaRatio = 0.01
     # # Filter by Color
     params.filterByColor = 1
@@ -83,13 +83,49 @@ while True:
     im_with_keypoints = cv2.drawKeypoints(thresh3000, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
     # # # KONIEC BLOB DETECTOR 3000 # # #
 
+    #remoove not founded blobs 
+    for blob in myBlobs:
+        if not blob.founded:
+            myBlobs.remove(blob)
+
     # # # BLOB ANALAJZER 9000 # # #
-    myBlobs = []
+    print("nr of keys = ", len(keypoints))
+    print("nr of blobs = ", len(myBlobs))
+
+    index = 0
     for k in keypoints:
-        x, y = k.pt
-        newBlob = myblob.Blob(x, y)
-        myBlobs.append(newBlob)
-        print(newBlob.sredniaX(), "  ", newBlob.sredniaY())
+        xK, yK = k.pt
+        #print("Point x ",xK, " y ",yK)
+
+        anyBlobFounded = False
+        index = index + 1
+        for blob in myBlobs:
+            #print("blob history = ", blob.xHistory)
+            
+
+            #debug lines and text
+            cv2.line(frame,(int(blob.xHistory[-1]),int(blob.yHistory[-1])),(int(xK),int(yK)),(0,255,255),5)
+            cv2.putText(frame, str(int(blob.distance(blob.xHistory[-1], blob.yHistory[-1], xK, yK))), (int((blob.xHistory[-1]+xK)/2), int((blob.yHistory[-1]+yK)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
+            cv2.putText(frame, str(index), (int(xK), int(yK)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+
+            blob.founded = False
+            if(blob.isNear(xK, yK)):
+                blob.newPosition(xK, yK)
+                #print("update blob")
+                anyBlobFounded = True
+                blob.founded = True
+    
+        if not anyBlobFounded:
+            newBlob = myblob.Blob(xK, yK)
+            myBlobs.append(newBlob)
+            #print("add blob")  
+
+    
+    #for blob in myBlobs:
+        #print("x  ", blob.xHistory)
+        #print("y  ", blob.yHistory)
+
+    #myBlobs = []
 
     #if any(myBlobs):
         #print(myblob.Blob.srednia())
@@ -97,6 +133,9 @@ while True:
     # # # KONIEC OF BLOB ANALAJZER 9000 # # #
 
     # # # CONTURO-KRAJZERKA XD # # #
+    cnts = cv2.findContours(thresh3000, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = imutils.grab_contours(cnts)
+    '''
     index = 0
     for c in cnts:
     # if the contour is too small, ignore it
@@ -124,24 +163,24 @@ while True:
         #print(x, y)
         #print(ratio)
     # # # KONIEC KONTURO-KRAJZERKI # # # 
-
+    '''
     #upperline
-    cv2.line(frame,(130,50),(1200,550),(0,255,0),1)
-    
+    #cv2.line(frame,(130,50),(1200,550),(0,255,0),1)
+
     #downline
-    cv2.line(frame,(130,380),(1200,1400),(0,255,0),1)
+    #cv2.line(frame,(130,380),(1200,1400),(0,255,0),1)
 
     # # # SHOW IMAGES # # #
     windowSizeH = 640
     windowSizeW = 400
-    img3000 = cv2.resize(img3000, (windowSizeH, windowSizeW))
-    cv2.imshow("Conected components 3000", img3000)
+    #img3000 = cv2.resize(img3000, (windowSizeH, windowSizeW))
+    #cv2.imshow("Conected components 3000", img3000)
     #thresh3000 = cv2.resize(thresh3000, (windowSizeH, windowSizeW))
     # cv2.imshow("Blobs 3000", thresh3000)
     frame = cv2.resize(frame, (windowSizeH, windowSizeW))
     cv2.imshow("Frame", frame)
-    mask = cv2.resize(mask, (windowSizeH, windowSizeW))
-    cv2.imshow("mask", mask)
+    #mask = cv2.resize(mask, (windowSizeH, windowSizeW))
+    #cv2.imshow("mask", mask)
     im_with_keypoints = cv2.resize(im_with_keypoints, (windowSizeH, windowSizeW))
     cv2.imshow("im_with_keypoints", im_with_keypoints)
     # # #  END OF SHOW IMAGES # # #
