@@ -59,6 +59,7 @@ def start_stream():
     time.sleep(0.5)
     subtractor = cv2.createBackgroundSubtractorMOG2(history=500, varThreshold=12, detectShadows=False)
     myBlobs = []
+    points = []
 
     while True:
         #Read frame
@@ -67,6 +68,7 @@ def start_stream():
 
         img3000 = remove_noise(mask)
         thresh3000 = dilate_image(img3000)
+        
         params = params_for_blobs()
         detector = cv2.SimpleBlobDetector_create(params)
         keypoints = detector.detect(thresh3000)
@@ -91,6 +93,9 @@ def start_stream():
             for blob in myBlobs:                
                 #debug lines and text
                 cv2.line(frame,(int(blob.points[-1].x + blob.vectors[-1].x),int(blob.points[-1].y + blob.vectors[-1].y)),(int(blob.points[-1].x),int(blob.points[-1].y)),(0,255,255),2)
+                cv2.line(im_with_keypoints,(int(blob.points[-1].x + blob.vectors[-1].x),int(blob.points[-1].y + blob.vectors[-1].y)),(int(blob.points[-1].x),int(blob.points[-1].y)),(0,255,255),2)
+
+                points.append(Point(blob.points[-1].x, blob.points[-1].y))
 
                 # cv2.putText(frame, str(int(blob.distance(blob.xHistory[-1], blob.yHistory[-1], xK, yK))), (int((blob.xHistory[-1]+xK)/2), int((blob.yHistory[-1]+yK)/2)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 3)
                 # cv2.putText(frame, str(index), (int(xK), int(yK)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
@@ -105,6 +110,9 @@ def start_stream():
             if not anyBlobFounded:
                 myBlobs.append(Blob(xK, yK))
 
+        for point in points:
+            cv2.circle(frame, (int(point.x), int(point.y)), 2, (255, 0, 0), -1)
+            cv2.circle(im_with_keypoints, (int(point.x), int(point.y)), 2, (255, 0, 0), -1)
 
         # # # KONIEC OF BLOB ANALAJZER 9000 # # #
 
